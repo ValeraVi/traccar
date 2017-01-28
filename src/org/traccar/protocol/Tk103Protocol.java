@@ -30,6 +30,19 @@ public class Tk103Protocol extends BaseProtocol {
 
     public Tk103Protocol() {
         super("tk103");
+        setSupportedCommands(
+                Command.TYPE_POSITION_SINGLE,
+                "positionRealtime",
+                "positionRealtimeStop",
+                "modeDeepSleepInterval2Hour",
+                "modeDeepSleepMotion",
+                "modeDeepSleepOff",
+                "alarmSosOn",
+                "alarmSosOff",
+                Command.TYPE_ALARM_SOS,
+                "multiControllerOn",
+                "multiControllerOff",
+                Command.TYPE_REBOOT_DEVICE);
     }
 
     @Override
@@ -41,6 +54,7 @@ public class Tk103Protocol extends BaseProtocol {
                 pipeline.addLast("stringDecoder", new StringDecoder());
                 pipeline.addLast("stringEncoder", new StringEncoder());
                 pipeline.addLast("objectDecoder", new Tk103ProtocolDecoder(Tk103Protocol.this));
+                pipeline.addLast("objectEncoder", new Tk103ProtocolEncoder());
             }
         });
         serverList.add(new TrackerServer(new ConnectionlessBootstrap(), getName()) {
