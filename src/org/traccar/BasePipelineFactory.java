@@ -43,6 +43,7 @@ import org.traccar.processing.ComputedAttributesHandler;
 import org.traccar.processing.CopyAttributesHandler;
 
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 
 public abstract class BasePipelineFactory implements ChannelPipelineFactory {
 
@@ -107,6 +108,8 @@ public abstract class BasePipelineFactory implements ChannelPipelineFactory {
                 msg.append("]");
 
                 if (event.getMessage() instanceof ChannelBuffer) {
+                    msg.append(" STR: ");
+                    msg.append(((ChannelBuffer) event.getMessage()).toString(StandardCharsets.US_ASCII));
                     msg.append(" HEX: ");
                     msg.append(ChannelBuffers.hexDump((ChannelBuffer) event.getMessage()));
                 }
