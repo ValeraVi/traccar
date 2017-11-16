@@ -29,6 +29,8 @@ import org.traccar.model.Position;
 import org.traccar.model.WifiAccessPoint;
 
 import java.net.SocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 public class Tk103ProtocolDecoder extends BaseProtocolDecoder {
@@ -179,6 +181,34 @@ public class Tk103ProtocolDecoder extends BaseProtocolDecoder {
         }
     }
 
+    private static Map<Long, Position> batteryInfo = new HashMap<Long, Position>();
+
+    public void setLastBatteryPower(Position positionWithCurrentBatteryInfo) {
+        batteryInfo.put(positionWithCurrentBatteryInfo.getDeviceId(), positionWithCurrentBatteryInfo);
+    }
+
+    // It is possible to use "processing.copyAttributes" configuration to have battery level in all events,
+    //  but this will not work if battery events will be filtered somehow and dropped from DB, so it will be no
+    //  event in DB with latest battery level. So, ensure all our events have latest battery level.
+    public void getLastBatteryPower(Position position) {
+        if (position != null && position.getDeviceId() != 0) {
+            Position bi = batteryInfo.get(position.getDeviceId());
+            if (bi == null) {
+                bi = new Position();
+                getLastLocation(bi, null);
+            }
+            if (bi.getAttributes().containsKey(Position.KEY_BATTERY_LEVEL)) {
+                position.set(Position.KEY_BATTERY_LEVEL, bi.getDouble(Position.KEY_BATTERY_LEVEL));
+            }
+            if (bi.getAttributes().containsKey(Position.KEY_BATTERY)) {
+                position.set(Position.KEY_BATTERY, bi.getDouble(Position.KEY_BATTERY));
+            }
+            if (bi.getAttributes().containsKey(Position.KEY_POWER)) {
+                position.set(Position.KEY_POWER, bi.getDouble(Position.KEY_POWER));
+            }
+        }
+    }
+
     private Position decodeBattery(Channel channel, SocketAddress remoteAddress, String sentence) {
         Parser parser = new Parser(PATTERN_BATTERY, sentence);
         if (!parser.matches()) {
@@ -211,6 +241,8 @@ public class Tk103ProtocolDecoder extends BaseProtocolDecoder {
             position.set(Position.KEY_POWER, power * 0.1);
         }
 
+        setLastBatteryPower(position);
+
         return position;
     }
 
@@ -230,6 +262,8 @@ public class Tk103ProtocolDecoder extends BaseProtocolDecoder {
         position.setDeviceId(deviceSession.getDeviceId());
 
         getLastLocation(position, null);
+
+        getLastBatteryPower(position);
 
         position.setNetwork(new Network(CellTower.from(
                 parser.nextInt(0), parser.nextInt(0), parser.nextHexInt(0), parser.nextHexInt(0))));
@@ -255,6 +289,8 @@ public class Tk103ProtocolDecoder extends BaseProtocolDecoder {
         decodeType(position, parser.next(), "0");
 
         getLastLocation(position, null);
+
+        getLastBatteryPower(position);
 
         Network network = new Network();
 
@@ -344,6 +380,8 @@ public class Tk103ProtocolDecoder extends BaseProtocolDecoder {
         boolean alternative = parser.next() != null;
 
         decodeType(position, parser.next(), parser.next());
+
+        getLastBatteryPower(position);
 
         DateBuilder dateBuilder = new DateBuilder();
         if (alternative) {
